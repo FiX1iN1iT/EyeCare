@@ -10,17 +10,12 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
 
       - name: Show Xcode version
         run: xcodebuild -version
-
-      # The project is saved by Xcode 27 (objectVersion 110), which the Xcode 26.6
-      # on the runner can't open. Downgrade the format in CI only (not committed).
-      - name: Downgrade project format for Xcode 26
-        run: sed -i '' 's/objectVersion = 110;/objectVersion = 77;/' EyeCare.xcodeproj/project.pbxproj
 
       - name: Build
         run: |

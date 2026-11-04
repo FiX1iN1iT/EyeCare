@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project EyeCare.xcodeproj \
+            -scheme EyeCare \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Package
+        id: package
+        run: |
+          APP=$(find build/Build/Products/Release -maxdepth 1 -name '*.app' | head -n 1)
+          test -n "$APP" || { echo "No .app found"; exit 1; }
+          TAG="v1.0.${{ github.run_number }}"
+          ARCHIVE="EyeCare-${TAG}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.package.outputs.tag }}" \
+            "${{ steps.package.outputs.archive }}" \
+            --target "${{ github.sha }}" \
+            --title "EyeCare ${{ steps.package.outputs.tag }}" \
+            --generate-notes

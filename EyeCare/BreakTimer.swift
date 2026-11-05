@@ -100,6 +100,17 @@ final class BreakTimer: ObservableObject {
         warning.hide()
     }
 
+    /// Откладывает перерыв на `interval` секунд. Плашки скрываются и появятся снова
+    /// в положенный момент (за минуту / за 10 секунд до перерыва).
+    func extendWork(by interval: TimeInterval) {
+        guard phase == .working else { return }
+        deadline = deadline.addingTimeInterval(interval)
+        remaining += interval
+        warning.hide()
+        cursorHint.hide()
+        warningShown = false
+    }
+
     func togglePause() {
         guard phase == .working else { return }
         if isPaused {

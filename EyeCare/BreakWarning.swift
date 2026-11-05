@@ -17,7 +17,7 @@ final class BreakWarningController {
     func show(timer: BreakTimer) {
         guard panel == nil, let screen = NSScreen.main else { return }
 
-        let size = NSSize(width: 290, height: 64)
+        let size = NSSize(width: 290, height: 96)
         let frame = screen.visibleFrame
         let shown = NSRect(x: frame.maxX - size.width - 16, y: frame.maxY - size.height - 12,
                            width: size.width, height: size.height)
@@ -63,13 +63,20 @@ private struct BreakWarningView: View {
     @ObservedObject var timer: BreakTimer
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "eye")
-                .font(.title2)
-            Text("Перерыв через")
-            Text(timer.remainingText)
-                .font(.system(.title2, design: .rounded, weight: .semibold))
-                .monospacedDigit()
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "eye")
+                    .font(.title2)
+                Text("Перерыв через")
+                Text(timer.remainingText)
+                    .font(.system(.title2, design: .rounded, weight: .semibold))
+                    .monospacedDigit()
+            }
+            HStack(spacing: 6) {
+                extendButton("+ 1 мин", minutes: 1)
+                extendButton("+ 5 мин", minutes: 5)
+                extendButton("+ 15 мин", minutes: 15)
+            }
         }
         .padding(.horizontal, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -89,5 +96,13 @@ private struct BreakWarningView: View {
             .padding(6)
             .help("Закрыть")
         }
+    }
+
+    private func extendButton(_ title: String, minutes: Int) -> some View {
+        Button(title) {
+            timer.extendWork(by: TimeInterval(minutes * 60))
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 }

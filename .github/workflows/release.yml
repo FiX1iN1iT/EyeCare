@@ -68,7 +68,7 @@ jobs:
         run: |
           APP=$(find build/Build/Products/Release -maxdepth 1 -name '*.app' | head -n 1)
           test -n "$APP" || { echo "No .app found"; exit 1; }
-          ARCHIVE="EyeCare-${{ steps.version.outputs.tag }}.zip"
+          ARCHIVE="EyeCare.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
 

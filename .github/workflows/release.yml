@@ -1,9 +1,17 @@
 name: Release
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of the version to increase
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+        required: true
 
 permissions:
   contents: write
@@ -17,9 +25,30 @@ jobs:
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Compute next version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          LAST=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          LAST=${LAST:-v0.0.0}
+          IFS=. read -r MAJOR MINOR PATCH <<< "${LAST#v}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+            *) echo "Unknown bump: $BUMP"; exit 1 ;;
+          esac
+          VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "Previous: $LAST -> New: v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build
         run: |
@@ -29,6 +58,7 @@ jobs:
             -configuration Release \
             -destination 'platform=macOS' \
             -derivedDataPath build \
+            MARKETING_VERSION="${{ steps.version.outputs.version }}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
@@ -38,18 +68,16 @@ jobs:
         run: |
           APP=$(find build/Build/Products/Release -maxdepth 1 -name '*.app' | head -n 1)
           test -n "$APP" || { echo "No .app found"; exit 1; }
-          TAG="v1.0.${{ github.run_number }}"
-          ARCHIVE="EyeCare-${TAG}.zip"
+          ARCHIVE="EyeCare-${{ steps.version.outputs.tag }}.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.package.outputs.tag }}" \
+          gh release create "${{ steps.version.outputs.tag }}" \
             "${{ steps.package.outputs.archive }}" \
             --target "${{ github.sha }}" \
-            --title "EyeCare ${{ steps.package.outputs.tag }}" \
+            --title "EyeCare ${{ steps.version.outputs.tag }}" \
             --generate-notes

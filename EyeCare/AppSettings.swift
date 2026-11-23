@@ -38,6 +38,9 @@ final class AppSettings: ObservableObject {
     @Published var menuBarStyle: MenuBarStyle {
         didSet { defaults.set(menuBarStyle.rawValue, forKey: Key.menuBarStyle) }
     }
+    @Published var smartPauseEnabled: Bool {
+        didSet { defaults.set(smartPauseEnabled, forKey: Key.smartPauseEnabled) }
+    }
 
     var workDuration: TimeInterval { TimeInterval(workMinutes * 60) }
     var breakDuration: TimeInterval { TimeInterval(breakSeconds) }
@@ -46,6 +49,7 @@ final class AppSettings: ObservableObject {
         static let workMinutes = "workMinutes"
         static let breakSeconds = "breakSeconds"
         static let menuBarStyle = "menuBarStyle"
+        static let smartPauseEnabled = "smartPauseEnabled"
     }
 
     private let defaults = UserDefaults.standard
@@ -55,9 +59,11 @@ final class AppSettings: ObservableObject {
             Key.workMinutes: 20,
             Key.breakSeconds: 60,
             Key.menuBarStyle: MenuBarStyle.clock.rawValue,
+            Key.smartPauseEnabled: true,
         ])
         workMinutes = defaults.integer(forKey: Key.workMinutes)
         breakSeconds = defaults.integer(forKey: Key.breakSeconds)
         menuBarStyle = MenuBarStyle(rawValue: defaults.string(forKey: Key.menuBarStyle) ?? "") ?? .clock
+        smartPauseEnabled = defaults.bool(forKey: Key.smartPauseEnabled)
     }
 }

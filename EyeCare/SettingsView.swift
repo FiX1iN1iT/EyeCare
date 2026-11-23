@@ -30,6 +30,10 @@ struct SettingsView: View {
                     Stepper(value: $settings.breakSeconds, in: AppSettings.breakSecondsRange, step: 10) {
                         LabeledContent("Длительность перерыва", value: Self.breakText(settings.breakSeconds))
                     }
+                    Toggle("Умная пауза при подключении к звонку", isOn: $settings.smartPauseEnabled)
+                    Text("Останавливает таймер, когда звонок использует микрофон — даже если он выключен.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Menu Bar") {

@@ -17,6 +17,8 @@ final class BreakTimer: ObservableObject {
 
     @Published private(set) var phase: Phase = .working
     @Published private(set) var isPaused = false
+    /// `true`, если таймер остановлен из-за использования микрофона звонком.
+    @Published private(set) var isSmartPaused = false
     /// Оставшееся время текущей фазы, секунды.
     @Published private(set) var remaining: TimeInterval
     /// Текущее время — для часов на экране перерыва.
@@ -29,6 +31,7 @@ final class BreakTimer: ObservableObject {
     private let warning = BreakWarningController()
     private var warningShown = false
     private let cursorHint = BreakCursorHintController()
+    private var smartPauseMonitor: SmartPauseMonitor?
 
     private static let cursorHintLead: TimeInterval = 10
 
@@ -50,6 +53,11 @@ final class BreakTimer: ObservableObject {
         settings.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+
+        smartPauseMonitor = SmartPauseMonitor { [weak self] microphoneInUse in
+            guard let self, self.settings.smartPauseEnabled else { return }
+            self.microphoneUsageDidChange(microphoneInUse)
+        }
 
         // Новое время до перерыва применяется сразу.
         settings.$workMinutes
@@ -116,14 +124,38 @@ final class BreakTimer: ObservableObject {
         if isPaused {
             deadline = Date().addingTimeInterval(remaining)
             isPaused = false
+            isSmartPaused = false
         } else {
             isPaused = true
+            isSmartPaused = false
             warning.hide()
             cursorHint.hide()
         }
     }
 
     // MARK: - Private
+
+    private func pauseForMicrophoneInUse() {
+        guard phase == .working, !isPaused else { return }
+        isPaused = true
+        isSmartPaused = true
+        warning.hide()
+        cursorHint.hide()
+    }
+
+    private func microphoneUsageDidChange(_ microphoneInUse: Bool) {
+        if microphoneInUse {
+            pauseForMicrophoneInUse()
+            return
+        }
+
+        // Возобновляем только паузу, созданную умной функцией: ручная пауза
+        // пользователя не должна отменяться после завершения звонка.
+        guard phase == .working, isPaused, isSmartPaused else { return }
+        deadline = Date().addingTimeInterval(remaining)
+        isPaused = false
+        isSmartPaused = false
+    }
 
     private func tick() {
         now = Date()
@@ -164,6 +196,7 @@ final class BreakTimer: ObservableObject {
         warningShown = false
         phase = .working
         isPaused = false
+        isSmartPaused = false
         deadline = Date().addingTimeInterval(workDuration)
         remaining = workDuration
     }
@@ -173,6 +206,7 @@ final class BreakTimer: ObservableObject {
         cursorHint.hide()
         phase = .onBreak
         isPaused = false
+        isSmartPaused = false
         deadline = Date().addingTimeInterval(settings.breakDuration)
         remaining = settings.breakDuration
         overlay.show(timer: self)

@@ -11,7 +11,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack(spacing: 14) {
             VStack(spacing: 4) {
-                Text(timer.isPaused ? "Пауза" : "До перерыва")
+                Text(timer.isPaused ? (timer.isSmartPaused ? "Пауза: звонок" : "Пауза") : "До перерыва")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text(timer.remainingText)
